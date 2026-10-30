@@ -1,13 +1,22 @@
-/tmp
-/out-tsc
+dist/
+.astro/
+tmp/
+out-tsc/
+node_modules/
 
-/node_modules
+# logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-/.pnp
-.pnp.js
+pnpm-debug.log*
 
 .agents/
 .idea/
-.vscode/*
+.vscode/
+
+/.pnp
+.pnp.js
+.env
+.env.production
+.DS_Store
+AGENTS.md

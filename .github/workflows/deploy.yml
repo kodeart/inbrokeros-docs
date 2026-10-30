@@ -1,0 +1,57 @@
+name: Deploy docs
+on:
+  push:
+    tags: [ 'v*' ]
+  repository_dispatch:
+    types: [ project-release ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version (blank = latest project release)
+        required: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        env:
+          EVENT: ${{ github.event_name }}
+          PAYLOAD_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if   [ "$EVENT" = "repository_dispatch" ]; then V="$PAYLOAD_VERSION"
+          elif [ "$EVENT" = "push" ];                 then V="$GITHUB_REF_NAME"
+          elif [ -n "$INPUT_VERSION" ];               then V="$INPUT_VERSION"
+          else V=$(gh api repos/YOUR_ORG/my-project/releases/latest --jq .tag_name)
+          fi
+          echo "PUBLIC_DOCS_VERSION=${V#v}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4
